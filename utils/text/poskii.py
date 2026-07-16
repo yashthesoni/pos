@@ -1,3 +1,5 @@
+from typing import Any
+
 _POSKII_CHARS = [
     # punctuation
     " ",
@@ -251,29 +253,70 @@ char_to_poskii_maps = {
     "x": 93,
     "y": 94,
     "z": 95,
-    "�": 96,
+    "\ufffd": 96,
 }
 
 
 class PoskiiHandler:
-    def __init__(self, font):
-        self.ptc = poskii_to_char_maps
-        self.ctp = char_to_poskii_maps
-        self.font = font
+    """
+    Handler for POSKII encoding and font translation.
 
-    def pski(self, input: str) -> int:
-        return self.ctp.get(input, 0)
+    POSKII is a custom 1-indexed character encoding maps mapping standard ASCII characters
+    to font glyph pixel representations.
+    """
 
-    def char(self, input: int) -> str:
-        return self.ptc.get(input, "")
+    def __init__(self, font: Any) -> None:
+        """
+        Initialize the PoskiiHandler with a given font configuration.
 
-    def get_arr(self, input: str | int) -> str:
+        Args:
+            font: An object or module containing `font_file` (dict mapping code points to pixel string).
+        """
+        self.ptc: dict[int, str] = poskii_to_char_maps
+        self.ctp: dict[str, int] = char_to_poskii_maps
+        self.font: Any = font
 
-        if type(input) is str:
-            return self.font.font_file[self.pski(input)]
+    def pski(self, character: str) -> int:
+        """
+        Lookup the POSKII integer code corresponding to the given string character.
 
-        elif type(input) is int:
-            return self.font.font_file[input]
+        Args:
+            character: The single-character string to lookup.
 
-        else:
-            return str(self.font.font_file[96])
+        Returns:
+            The POSKII integer code (1-96), or 0 if not found.
+        """
+        return self.ctp.get(character, 0)
+
+    def char(self, code: int) -> str:
+        """
+        Lookup the string character corresponding to the given POSKII integer code.
+
+        Args:
+            code: The POSKII integer code.
+
+        Returns:
+            The string character, or empty string if not found.
+        """
+        return self.ptc.get(code, "")
+
+    def get_arr(self, char_or_code: str | int) -> str:
+        """
+        Retrieve the font bitmap pixel string representation for a given character or POSKII code.
+
+        Args:
+            char_or_code: Either the string character (e.g. 'A') or its POSKII integer code.
+
+        Returns:
+            The pixel layout string (e.g., '00100 11100 ...').
+            If lookup fails, falls back to the default replacement character glyph (POSKII 96).
+        """
+        try:
+            if isinstance(char_or_code, str):
+                return self.font.font_file[self.pski(char_or_code)]
+            elif isinstance(char_or_code, int):
+                return self.font.font_file[char_or_code]
+            else:
+                raise TypeError("Input must be a string or integer")
+        except Exception:
+            return self.font.font_file[96]
