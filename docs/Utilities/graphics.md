@@ -92,16 +92,3 @@ g.lineH(0, 9, 10)
 g.lineV(0, 0, 10)
 g.lineV(9, 0, 10)
 ```
-
-### Blitting a Scaled Image with Transparency
-```python
-# A simple 3x3 smiley face image
-smiley = (
-    "1 0 1"
-    "0 0 0"
-    "1 1 1"
-)
-
-# Render it scaled 3x (9x9 pixels) at coordinate (5, 5) with black treated as transparent
-g.image(smiley, line_length=3, cordinates=[5, 5], scale=3, transparent=True)
-```
