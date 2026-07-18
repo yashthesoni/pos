@@ -1,10 +1,10 @@
 # Graphics Library Documentation
 
-The [GraphicsHandler](file:///Users/yashsoni/Codes/pos/utils/graphics.py#L12) class provides high-level 2D drawing functions built on top of the raw 1D bit array display memory of the `pos` OS simulator.
+The `GraphicsHandler` class provides high-level 2D drawing functions built on top of the raw 1D bit array display memory of the `pos` OS simulator.
 
 ## Class Overview
 
-* **Source File**: [graphics.py](file:///Users/yashsoni/Codes/pos/utils/graphics.py)
+* **Source File**: `graphics.py`
 * **Import Path**: `from utils.graphics import GraphicsHandler`
 
 The class abstracts pixel coordinates, line drawing, and blitting images. It supports coordinate mapping relative to a viewport **origin offset**.
@@ -17,7 +17,7 @@ The class abstracts pixel coordinates, line drawing, and blitting images. It sup
 def __init__(self, pos: POS, origin: Optional[List[int]] = None) -> None:
 ```
 
-* **`pos`**: An active connection instance of the [POS](file:///Users/yashsoni/Codes/pos/posetem/pos.py#L52) client.
+* **`pos`**: An active connection instance of the `POS` client.
 * **`origin`**: An optional list `[x_offset, y_offset]` in pixels. All coordinate values passed to drawing methods will be offset relative to this origin. Defaults to `[0, 0]`.
 
 ---

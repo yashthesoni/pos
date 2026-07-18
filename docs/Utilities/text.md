@@ -1,6 +1,6 @@
 # Text and POSKII Handler Documentation
 
-The [PoskiiHandler](file:///Users/yashsoni/Codes/pos/utils/text/poskii.py#L262) class translates ASCII text strings into custom POSKII character codes, retrieves pixel array arrays from a font file, and prepares them for rendering onto the display.
+The `PoskiiHandler` class translates ASCII text strings into custom POSKII character codes, retrieves pixel array arrays from a font file, and prepares them for rendering onto the display.
 
 ## POSKII Character Set
 
@@ -15,7 +15,7 @@ POSKII is a custom 1-indexed character set containing 96 entries:
 
 ## Class Overview
 
-* **Source File**: [poskii.py](file:///Users/yashsoni/Codes/pos/utils/text/poskii.py)
+* **Source File**: `poskii.py`
 * **Import Path**: `from utils.text.poskii import PoskiiHandler`
 
 ---
@@ -55,7 +55,7 @@ Retrieves the font bitmap pixel string representation for a given character or P
 
 ## Font Format Specification
 
-A font module passed to [PoskiiHandler](file:///Users/yashsoni/Codes/pos/utils/text/poskii.py#L262) must provide a class/object with:
+A font module passed to `PoskiiHandler` must provide a class/object with:
 * `properties`: Dictionary indicating `height`, `width`, `letter_spacing`, and `line_spacing`.
 * `font_file`: Dictionary mapping POSKII integers to space-separated binary rows.
 

@@ -1,11 +1,11 @@
 # Font and Text Layout Handler Documentation
 
-The [PosFontHandler](file:///Users/yashsoni/Codes/pos/utils/text/posfont.py#L9) class handles text writing and single-line formatting on the display using Poskii font glyphs.
+The `FontHandler` class handles text writing and single-line formatting on the display using Poskii font glyphs.
 
 ## Class Overview
 
-* **Source File**: [posfont.py](file:///Users/yashsoni/Codes/pos/utils/text/posfont.py)
-* **Import Path**: `from utils.text.posfont import PosFontHandler`
+* **Source File**: `posfont.py`
+* **Import Path**: `from utils.text.posfont import FontHandler`
 
 ---
 
@@ -15,7 +15,7 @@ The [PosFontHandler](file:///Users/yashsoni/Codes/pos/utils/text/posfont.py#L9) 
 def __init__(self, graphics: GraphicsHandler, font: Any) -> None:
 ```
 
-* **`graphics`**: The active [GraphicsHandler](file:///Users/yashsoni/Codes/pos/utils/graphics.py#L12) instance.
+* **`graphics`**: The active `GraphicsHandler` instance.
 * **`font`**: The font class or module containing `font_file` and font properties (such as glyph width, height, and spacing).
 
 ---
@@ -39,12 +39,12 @@ Renders a single line of text onto the screen. Characters are drawn sequentially
 ```python
 from posetem import POS
 from utils.graphics import GraphicsHandler
-from utils.text.posfont import PosFontHandler
+from utils.text.posfont import FontHandler
 
 # Setup connection and handlers
 pos = POS("sys.pos")
 g = GraphicsHandler(pos)
-fh = PosFontHandler(g, MyFont)
+fh = FontHandler(g, MyFont)
 
 # Write a single line of text to coordinates (0, 0)
 fh.write_line("Hello World", cordinates=[0, 0], scale=2)
