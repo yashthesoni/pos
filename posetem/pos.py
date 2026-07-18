@@ -158,16 +158,18 @@ class POS:
         """
         Write `data` (list of 0/1/2, or string like "1021") to the display region.
         Overflow is silently clipped. A value of 2 is transparent — that pixel
-        is left unchanged.
+        is left unchanged. Negative start indices or data values are rejected.
 
         smart=True (default): start=0 is first display pixel.
         """
+        if start < 0:
+            raise ValueError("start index cannot be negative")
         data = self._to_bits(data)
+        if any(isinstance(b, int) and b < 0 for b in data):
+            raise ValueError("data cannot contain negative numbers")
         if smart:
             start += self._display_start
-        cap = self._display_end - start
-        if cap <= 0:
-            return
+        cap = max(0, self._display_end - start)
         for i, b in enumerate(data[:cap]):
             if b == 2:
                 continue

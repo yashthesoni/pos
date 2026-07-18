@@ -24,7 +24,7 @@ class FontHandler:
         self.font: Any = font
         self.poskii: PoskiiHandler = PoskiiHandler(font)
 
-    def write_line(
+    def write_words(
         self,
         text: str,
         cordinates: Optional[List[int]] = None,

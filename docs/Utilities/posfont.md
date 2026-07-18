@@ -22,7 +22,7 @@ def __init__(self, graphics: GraphicsHandler, font: Any) -> None:
 
 ## API Reference
 
-### `write_line(text: str, cordinates: Optional[List[int]] = None, margin: int = 0, scale: int = 1, transparent: bool = False, inverted: bool = False) -> None`
+### `write_words(text: str, cordinates: Optional[List[int]] = None, margin: int = 0, scale: int = 1, transparent: bool = False, inverted: bool = False) -> None`
 Renders a single line of text onto the screen. Characters are drawn sequentially in a single row.
 * **Parameters**:
   * `text`: The single-line text string to render.
@@ -47,5 +47,5 @@ g = GraphicsHandler(pos)
 fh = FontHandler(g, MyFont)
 
 # Write a single line of text to coordinates (0, 0)
-fh.write_line("Hello World", cordinates=[0, 0], scale=2)
+fh.write_words("Hello World", cordinates=[0, 0], scale=2)
 ```

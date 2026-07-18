@@ -26,6 +26,11 @@ class GraphicsHandler:
         """
         self.pos: POS = pos
         self.origin: List[int] = origin if origin is not None else [0, 0]
+        if any(coord < 0 for coord in self.origin):
+            raise ValueError("Origin coordinates cannot be negative")
+        if self.pos is not None:
+            if self.origin[0] >= self.pos.display_width or self.origin[1] >= self.pos.display_height:
+                raise ValueError("Origin coordinates must be within display bounds")
 
     def cord(self, x: int = 1, y: int = 1) -> int:
         """
@@ -38,10 +43,17 @@ class GraphicsHandler:
 
         Returns:
             The corresponding 1D index offset in the display memory.
-        """
-        return self.pos.display_width * (y + self.origin[1]) + x + self.origin[0]
 
-    def plot(self, x: int = 1, y: int = 1, inverted: bool = False) -> None:
+        Raises:
+            ValueError: If calculated coordinates are outside the display bounds.
+        """
+        actual_x = x + self.origin[0]
+        actual_y = y + self.origin[1]
+        if not (0 <= actual_x < self.pos.display_width and 0 <= actual_y < self.pos.display_height):
+            raise ValueError("Coordinates out of display range")
+        return self.pos.display_width * actual_y + actual_x
+
+    def plot(self, x: int = 1, y: int = 1, inverted: bool = False, margin: int = 0) -> None:
         """
         Write a single pixel to the screen at the given coordinates.
 
@@ -49,8 +61,9 @@ class GraphicsHandler:
             x: The X coordinate. Defaults to 1.
             y: The Y coordinate. Defaults to 1.
             inverted: If True, writes black (0). Otherwise, writes white (1).
+            margin: Margin offset applied to X and Y coordinates. Defaults to 0.
         """
-        self.pos.dwrite("0" if inverted else "1", start=self.cord(x, y))
+        self.pos.dwrite("0" if inverted else "1", start=self.cord(x + margin, y + margin))
 
     def clear(self) -> None:
         """
@@ -103,13 +116,22 @@ class GraphicsHandler:
             lines = list(map(lambda a: "".join(list(map(lambda x: x * scale, a))), lines))
             lines = [x for x in lines for _ in range(scale)]
 
-        st: int = margin
-        point: int = self.cord(*cordinates)
-        for a in lines:
-            self.pos.dwrite(a, start=self.pos.display_width * st + point + margin)
-            st += 1
+        if not lines:
+            self.cord(cordinates[0] + margin, cordinates[1] + margin)
+            return
 
-    def line(self, x0: int, y0: int, x1: int, y1: int, inverted: bool = False) -> None:
+        start_x = cordinates[0] + margin
+        start_y = cordinates[1] + margin
+        for i, line_str in enumerate(lines):
+            if not line_str:
+                continue
+            line_y = start_y + i
+            start_idx = self.cord(start_x, line_y)
+            # Check end of row line bounds
+            self.cord(start_x + len(line_str) - 1, line_y)
+            self.pos.dwrite(line_str, start=start_idx)
+
+    def line(self, x0: int, y0: int, x1: int, y1: int, inverted: bool = False, margin: int = 0) -> None:
         """
         Draw a straight line between two points using Bresenham's Line Algorithm.
 
@@ -119,6 +141,7 @@ class GraphicsHandler:
             x1: End point X coordinate.
             y1: End point Y coordinate.
             inverted: If True, draws the line in black (0) instead of white (1).
+            margin: Optional margin offset added to coordinates.
         """
         dx: int = abs(x1 - x0)
         dy: int = abs(y1 - y0)
@@ -131,7 +154,7 @@ class GraphicsHandler:
         if dx >= dy:
             p: int = 2 * dy - dx
             for _ in range(dx + 1):
-                self.plot(x, y, inverted)
+                self.plot(x, y, inverted, margin=margin)
                 if p >= 0:
                     y += step_y
                     p -= 2 * dx
@@ -140,14 +163,14 @@ class GraphicsHandler:
         else:
             p = 2 * dx - dy
             for _ in range(dy + 1):
-                self.plot(x, y, inverted)
+                self.plot(x, y, inverted, margin=margin)
                 if p >= 0:
                     x += step_x
                     p -= 2 * dy
                 p += 2 * dx
                 y += step_y
 
-    def lineH(self, x: int, y: int, length: int, inverted: bool = False) -> None:
+    def lineH(self, x: int, y: int, length: int, inverted: bool = False, margin: int = 0) -> None:
         """
         Draw a horizontal line of a given length.
 
@@ -156,11 +179,12 @@ class GraphicsHandler:
             y: Starting Y coordinate.
             length: Length of the line in pixels.
             inverted: If True, draws the line in black (0).
+            margin: Optional margin offset added to coordinates.
         """
         for _ in range(length):
-            self.plot(x + _, y, inverted)
+            self.plot(x + _, y, inverted, margin=margin)
 
-    def lineV(self, x: int, y: int, length: int, inverted: bool = False) -> None:
+    def lineV(self, x: int, y: int, length: int, inverted: bool = False, margin: int = 0) -> None:
         """
         Draw a vertical line of a given length.
 
@@ -169,6 +193,7 @@ class GraphicsHandler:
             y: Starting Y coordinate.
             length: Length of the line in pixels.
             inverted: If True, draws the line in black (0).
+            margin: Optional margin offset added to coordinates.
         """
         for _ in range(length):
-            self.plot(x, y + _, inverted)
+            self.plot(x, y + _, inverted, margin=margin)
