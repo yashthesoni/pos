@@ -23,10 +23,10 @@ POSKII is a custom 1-indexed character set containing 96 entries:
 ## Initialization
 
 ```python
-def __init__(self, font: Any) -> None:
+def __init__(self, font: dict) -> None:
 ```
 
-* **`font`**: An object, class, or module containing a `font_file` dictionary mapping POSKII character codes (1–96) to binary image pixel strings.
+* **`font`**: An dict containing `font_file`, mapping POSKII character codes (1–96) to binary image pixel strings.
 
 ---
 
@@ -55,24 +55,25 @@ Retrieves the font bitmap pixel string representation for a given character or P
 
 ## Font Format Specification
 
-A font module passed to `PoskiiHandler` must provide a class/object with:
+A font dictionary passed to `PoskiiHandler` must contain the following keys:
 * `properties`: Dictionary indicating `height`, `width`, `letter_spacing`, and `line_spacing`.
 * `font_file`: Dictionary mapping POSKII integers to space-separated binary rows.
 
 ### Font Example (5x9 pixels)
 ```python
-class MyFont:
-    properties = {
+MyFont = {
+    'properties': {
         "height": 9,
         "width": 5,
         "letter_spacing": 1,
         "line_spacing": 2,
-    }
-    font_file = {
+    },
+    'font_file': {
         34: "00100 11100 00100 00100 00100 00100 00100 00100 11111", # Glyph '1'
         35: "01110 10001 10001 00001 00010 00100 01000 10000 11111", # Glyph '2'
         96: "00100 01110 01010 11011 11011 11111 01010 01110 00100", # Fallback Glyph
     }
+}
 ```
 
 ---
@@ -93,5 +94,5 @@ t = PoskiiHandler(MyFont)
 glyph_data = t.get_arr("1")  # equivalent to t.get_arr(34)
 
 # 3. Draw the character to coordinates (0, 0)
-g.image(glyph_data, line_length=MyFont.properties["width"], cordinates=[0, 0])
+g.image(glyph_data, line_length=MyFont['properties']["width"], cordinates=[0, 0])
 ```

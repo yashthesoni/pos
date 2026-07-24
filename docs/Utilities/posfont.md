@@ -12,11 +12,11 @@ The `FontHandler` class handles text writing and single-line formatting on the d
 ## Initialization
 
 ```python
-def __init__(self, graphics: GraphicsHandler, font: Any) -> None:
+def __init__(self, graphics: GraphicsHandler, font: dict) -> None:
 ```
 
 * **`graphics`**: The active `GraphicsHandler` instance.
-* **`font`**: The font class or module containing `font_file` and font properties (such as glyph width, height, and spacing).
+* **`font`**: The font dict containing `font_file` and font properties (such as glyph width, height, and spacing).
 
 ---
 

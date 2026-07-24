@@ -12,16 +12,16 @@ class FontHandler:
     Handles text formatting and drawing text on the display using Poskii fonts.
     """
 
-    def __init__(self, graphics: GraphicsHandler, font: Any) -> None:
+    def __init__(self, graphics: GraphicsHandler, font: dict) -> None:
         """
         Initialize the font handler with a graphics context and a font.
 
         Args:
             graphics: The active GraphicsHandler to blit characters.
-            font: The font definition class/object.
+            font: An dict containing font information.
         """
         self.graphics: GraphicsHandler = graphics
-        self.font: Any = font
+        self.font: dict = font
         self.poskii: PoskiiHandler = PoskiiHandler(font)
 
     def write_words(
@@ -48,8 +48,8 @@ class FontHandler:
             cordinates = [0, 0]
 
         start_x, start_y = cordinates[0], cordinates[1]
-        w: int = self.font.properties.get("width", 5)
-        ls: int = self.font.properties.get("letter_spacing", 1)
+        w: int = self.font['properties']["width"]
+        ls: int = self.font['properties']["letter_spacing"]
 
         current_x: int = start_x
         for char in text:

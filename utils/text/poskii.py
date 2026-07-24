@@ -265,16 +265,16 @@ class PoskiiHandler:
     to font glyph pixel representations.
     """
 
-    def __init__(self, font: Any) -> None:
+    def __init__(self, font: dict) -> None:
         """
         Initialize the PoskiiHandler with a given font configuration.
 
         Args:
-            font: An object or module containing `font_file` (dict mapping code points to pixel string).
+            font: An dict containing font information.
         """
         self.ptc: dict[int, str] = poskii_to_char_maps
         self.ctp: dict[str, int] = char_to_poskii_maps
-        self.font: Any = font
+        self.font: dict = font
 
     def pski(self, character: str) -> int:
         """
@@ -313,10 +313,10 @@ class PoskiiHandler:
         """
         try:
             if isinstance(char_or_code, str):
-                return self.font.font_file[self.pski(char_or_code)]
+                return self.font['font_file'][self.pski(char_or_code)]
             elif isinstance(char_or_code, int):
-                return self.font.font_file[char_or_code]
+                return self.font['font_file'][char_or_code]
             else:
                 raise TypeError("Input must be a string or integer")
         except Exception:
-            return self.font.font_file[96]
+            return self.font['font_file'][96]
