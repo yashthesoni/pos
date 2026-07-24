@@ -38,8 +38,8 @@ for i in range(1, min(W, H) - 1):
 print("Diagonal drawn.")
 
 # Write + read user memory.
-pos.write([1, 0, 1, 0, 1, 0, 1, 0], start=0)
-print(f"User memory[0:8] = {pos.read(0, 8)}")
+pos._write([1, 0, 1, 0, 1, 0, 1, 0], start=0)
+print(f"User memory[0:8] = {pos._read(0, 8)}")
 
 pos.close()
 print("Done. Display in server terminal should show the result.")

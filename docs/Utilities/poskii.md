@@ -66,7 +66,9 @@ MyFont = {
         "height": 9,
         "width": 5,
         "letter_spacing": 1,
+        "word_spacing": 5,
         "line_spacing": 2,
+        "paragraph_spacing": 3
     },
     'font_file': {
         34: "00100 11100 00100 00100 00100 00100 00100 00100 11111", # Glyph '1'

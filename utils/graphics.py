@@ -7,6 +7,7 @@ image rendering (blitting) with scaling, and line drawing.
 Includes a viewport window system.
 """
 
+from contextlib import contextmanager
 from typing import List, Optional, Tuple
 from posetem.pos import POS
 
@@ -134,6 +135,22 @@ class GraphicsHandler:
         """Translate local coordinates to absolute display coordinates using origin."""
         return (x + self.origin[0], y + self.origin[1])
 
+    @contextmanager
+    def _margin_window(self, margin: int):
+        """Temporarily shrink the clipping window by margin on all four sides."""
+        if margin == 0:
+            yield
+            return
+        old = (self._window_left, self._window_top, self._window_right, self._window_bottom)
+        self._window_left += margin
+        self._window_top += margin
+        self._window_right -= margin
+        self._window_bottom -= margin
+        try:
+            yield
+        finally:
+            self._window_left, self._window_top, self._window_right, self._window_bottom = old
+
     def cord(self, x: int = 1, y: int = 1) -> int:
         """
         Convert 2D screen coordinates into a 1D flat display memory address,
@@ -163,13 +180,14 @@ class GraphicsHandler:
             x: The X coordinate. Defaults to 1.
             y: The Y coordinate. Defaults to 1.
             inverted: If True, writes black (0). Otherwise, writes white (1).
-            margin: Margin offset applied to X and Y coordinates. Defaults to 0.
+            margin: Temporary inset from all four sides of the window. Defaults to 0.
         """
-        abs_x, abs_y = self._abs_coords(x + margin, y + margin)
-        if not self._clip_point(abs_x, abs_y):
-            return  # silently clipped
-        addr = self.pos.display_width * abs_y + abs_x
-        self.pos.dwrite("0" if inverted else "1", start=addr)
+        with self._margin_window(margin):
+            abs_x, abs_y = self._abs_coords(x + margin, y + margin)
+            if not self._clip_point(abs_x, abs_y):
+                return
+            addr = self.pos.display_width * abs_y + abs_x
+            self.pos.dwrite("0" if inverted else "1", start=addr)
 
     def clear(self) -> None:
         """
@@ -195,7 +213,7 @@ class GraphicsHandler:
             line_length: The width of the image in pixels.
             cordinates: The starting [x, y] coordinates to render the image at.
                 Defaults to [0, 0] if None.
-            margin: Extra horizontal margin added to each line during drawing. Defaults to 0.
+            margin: Temporary inset from all four sides of the window. Defaults to 0.
             scale: An integer scaling factor. An image is scaled up by duplicating pixels
                 both horizontally and vertically. Defaults to 1.
             transparent: If True, '0' pixels are treated as transparent (value '2')
@@ -217,7 +235,6 @@ class GraphicsHandler:
             array[i : i + line_length] for i in range(0, len(array), line_length)
         ]
 
-        # Apply scaling if scale is greater than 1
         if scale > 1:
             lines = list(map(lambda a: "".join(list(map(lambda x: x * scale, a))), lines))
             lines = [x for x in lines for _ in range(scale)]
@@ -225,38 +242,35 @@ class GraphicsHandler:
         if not lines:
             return
 
-        start_x = cordinates[0] + margin
-        start_y = cordinates[1] + margin
-        for i, line_str in enumerate(lines):
-            if not line_str:
-                continue
-            line_y = start_y + i
-            abs_y = line_y + self.origin[1]
+        with self._margin_window(margin):
+            start_x = cordinates[0] + margin
+            start_y = cordinates[1] + margin
+            for i, line_str in enumerate(lines):
+                if not line_str:
+                    continue
+                line_y = start_y + i
+                abs_y = line_y + self.origin[1]
 
-            # Skip entire row if above or below window / display
-            if abs_y < 0 or abs_y >= self.pos.display_height:
-                continue
-            if abs_y < self._window_top or abs_y >= self._window_bottom:
-                continue
+                if abs_y < 0 or abs_y >= self.pos.display_height:
+                    continue
+                if abs_y < self._window_top or abs_y >= self._window_bottom:
+                    continue
 
-            # Clip columns
-            abs_start_x = start_x + self.origin[0]
-            abs_end_x = abs_start_x + len(line_str)  # exclusive
+                abs_start_x = start_x + self.origin[0]
+                abs_end_x = abs_start_x + len(line_str)
 
-            # Determine the drawable horizontal range
-            clip_left = max(abs_start_x, self._window_left, 0)
-            clip_right = min(abs_end_x, self._window_right, self.pos.display_width)
+                clip_left = max(abs_start_x, self._window_left, 0)
+                clip_right = min(abs_end_x, self._window_right, self.pos.display_width)
 
-            if clip_left >= clip_right:
-                continue  # entire row clipped
+                if clip_left >= clip_right:
+                    continue
 
-            # Slice the line_str to the drawable portion
-            slice_start = clip_left - abs_start_x
-            slice_end = clip_right - abs_start_x
-            clipped_line = line_str[slice_start:slice_end]
+                slice_start = clip_left - abs_start_x
+                slice_end = clip_right - abs_start_x
+                clipped_line = line_str[slice_start:slice_end]
 
-            addr = self.pos.display_width * abs_y + clip_left
-            self.pos.dwrite(clipped_line, start=addr)
+                addr = self.pos.display_width * abs_y + clip_left
+                self.pos.dwrite(clipped_line, start=addr)
 
     def line(self, x0: int, y0: int, x1: int, y1: int, inverted: bool = False, margin: int = 0) -> None:
         """
@@ -268,34 +282,37 @@ class GraphicsHandler:
             x1: End point X coordinate.
             y1: End point Y coordinate.
             inverted: If True, draws the line in black (0) instead of white (1).
-            margin: Optional margin offset added to coordinates.
+            margin: Temporary inset from all four sides of the window.
         """
-        dx: int = abs(x1 - x0)
-        dy: int = abs(y1 - y0)
+        with self._margin_window(margin):
+            x0, y0 = x0 + margin, y0 + margin
+            x1, y1 = x1 + margin, y1 + margin
+            dx: int = abs(x1 - x0)
+            dy: int = abs(y1 - y0)
 
-        step_x: int = 1 if x0 < x1 else -1
-        step_y: int = 1 if y0 < y1 else -1
+            step_x: int = 1 if x0 < x1 else -1
+            step_y: int = 1 if y0 < y1 else -1
 
-        x, y = x0, y0
+            x, y = x0, y0
 
-        if dx >= dy:
-            p: int = 2 * dy - dx
-            for _ in range(dx + 1):
-                self.plot(x, y, inverted, margin=margin)
-                if p >= 0:
-                    y += step_y
-                    p -= 2 * dx
-                p += 2 * dy
-                x += step_x
-        else:
-            p = 2 * dx - dy
-            for _ in range(dy + 1):
-                self.plot(x, y, inverted, margin=margin)
-                if p >= 0:
+            if dx >= dy:
+                p: int = 2 * dy - dx
+                for _ in range(dx + 1):
+                    self.plot(x, y, inverted)
+                    if p >= 0:
+                        y += step_y
+                        p -= 2 * dx
+                    p += 2 * dy
                     x += step_x
-                    p -= 2 * dy
-                p += 2 * dx
-                y += step_y
+            else:
+                p = 2 * dx - dy
+                for _ in range(dy + 1):
+                    self.plot(x, y, inverted)
+                    if p >= 0:
+                        x += step_x
+                        p -= 2 * dy
+                    p += 2 * dx
+                    y += step_y
 
     def lineH(self, x: int, y: int, length: int, inverted: bool = False, margin: int = 0) -> None:
         """
@@ -306,10 +323,11 @@ class GraphicsHandler:
             y: Starting Y coordinate.
             length: Length of the line in pixels.
             inverted: If True, draws the line in black (0).
-            margin: Optional margin offset added to coordinates.
+            margin: Temporary inset from all four sides of the window.
         """
-        for _ in range(length):
-            self.plot(x + _, y, inverted, margin=margin)
+        with self._margin_window(margin):
+            for _ in range(length):
+                self.plot(x + margin + _, y + margin, inverted)
 
     def lineV(self, x: int, y: int, length: int, inverted: bool = False, margin: int = 0) -> None:
         """
@@ -320,7 +338,8 @@ class GraphicsHandler:
             y: Starting Y coordinate.
             length: Length of the line in pixels.
             inverted: If True, draws the line in black (0).
-            margin: Optional margin offset added to coordinates.
+            margin: Temporary inset from all four sides of the window.
         """
-        for _ in range(length):
-            self.plot(x, y + _, inverted, margin=margin)
+        with self._margin_window(margin):
+            for _ in range(length):
+                self.plot(x + margin, y + margin + _, inverted)

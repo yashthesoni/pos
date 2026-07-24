@@ -3,7 +3,9 @@ detail_45 = {
         "height": 9,
         "width": 5,
         "letter_spacing": 1,
-        "line_spacing": 2
+        "word_spacing": 4,
+        "line_spacing": 2,
+        "paragraph_spacing": 3
     },
     'font_file': {
         1: "00000 00000 00000 00000 00000 00000 00000 00000 00000",
