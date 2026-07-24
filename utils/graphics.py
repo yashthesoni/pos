@@ -3,19 +3,23 @@ Graphics Handler for pos.
 
 Provides functions for coordinate translation, pixel plotting, screen clearing,
 image rendering (blitting) with scaling, and line drawing.
+
+Includes a viewport window system.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from posetem.pos import POS
 
 
 class GraphicsHandler:
     """
     Utility handler for performing graphics and drawing operations on the pos display.
-    Supports a viewport origin offset.
+    Supports a viewport origin offset and a clipping window.
+
+    Drawing operations that fall outside the window are silently clipped.
     """
 
-    def __init__(self, pos: POS, origin: Optional[List[int]] = None) -> None:
+    def __init__(self, pos: POS, origin: Optional[List[int]] = None, margin: int = 0) -> None:
         """
         Initialize the GraphicsHandler with a POS instance and an optional origin offset.
 
@@ -23,6 +27,8 @@ class GraphicsHandler:
             pos: The active POS client connection.
             origin: The [x, y] coordinates representing the viewport origin.
                 All drawing operations are relative to this origin. Defaults to [0, 0] if None.
+            margin: Uniform margin applied to all four sides of the display.
+                Shrinks the usable window inward. Defaults to 0.
         """
         self.pos: POS = pos
         self.origin: List[int] = origin if origin is not None else [0, 0]
@@ -31,6 +37,102 @@ class GraphicsHandler:
         if self.pos is not None:
             if self.origin[0] >= self.pos.display_width or self.origin[1] >= self.pos.display_height:
                 raise ValueError("Origin coordinates must be within display bounds")
+
+        self._window_left: int = 0
+        self._window_top: int = 0
+        self._window_right: int = self.pos.display_width
+        self._window_bottom: int = self.pos.display_height
+
+        if margin > 0:
+            self.set_margin(margin)
+
+    def set_window(self, left: int, top: int, right: int, bottom: int) -> None:
+        """
+        Set a custom clipping window in absolute display coordinates.
+
+        Pixels drawn outside this region are silently clipped.
+        The window is **not** rejected if it exceeds the physical display —
+        pixels that fall outside the display are simply clipped at draw time.
+
+        Args:
+            left:   Left edge X (inclusive).
+            top:    Top edge Y (inclusive).
+            right:  Right edge X (exclusive, one past last valid column).
+            bottom: Bottom edge Y (exclusive, one past last valid row).
+
+        Raises:
+            ValueError: If left >= right or top >= bottom.
+        """
+        if left >= right or top >= bottom:
+            raise ValueError("Invalid window: left must be < right and top must be < bottom")
+        self._window_left = left
+        self._window_top = top
+        self._window_right = right
+        self._window_bottom = bottom
+
+    def set_margin(self, margin: int) -> None:
+        """
+        Set the window by applying a uniform margin from all four sides of the display.
+
+        Args:
+            margin: Number of pixels to inset from each edge.
+
+        Raises:
+            ValueError: If the margin is too large for the display.
+        """
+        if margin < 0:
+            raise ValueError("Margin cannot be negative")
+        left = margin
+        top = margin
+        right = self.pos.display_width - margin
+        bottom = self.pos.display_height - margin
+        if left >= right or top >= bottom:
+            raise ValueError("Margin too large for the display dimensions")
+        self.set_window(left, top, right, bottom)
+
+    @property
+    def window(self) -> Tuple[int, int, int, int]:
+        """
+        The current clipping window as (left, top, right, bottom) in absolute display coordinates.
+        """
+        return (self._window_left, self._window_top, self._window_right, self._window_bottom)
+
+    @property
+    def window_width(self) -> int:
+        """Usable width of the current window in pixels."""
+        return self._window_right - self._window_left
+
+    @property
+    def window_height(self) -> int:
+        """Usable height of the current window in pixels."""
+        return self._window_bottom - self._window_top
+
+    @property
+    def window_size(self) -> Tuple[int, int]:
+        """Usable (width, height) of the current window."""
+        return (self.window_width, self.window_height)
+
+    def _clip_point(self, abs_x: int, abs_y: int) -> bool:
+        """
+        Check whether an absolute display coordinate is inside both the
+        window and the physical display.
+
+        Returns:
+            True if the point is drawable, False if it should be clipped.
+        """
+        if abs_x < 0 or abs_y < 0:
+            return False
+        if abs_x >= self.pos.display_width or abs_y >= self.pos.display_height:
+            return False
+        if abs_x < self._window_left or abs_x >= self._window_right:
+            return False
+        if abs_y < self._window_top or abs_y >= self._window_bottom:
+            return False
+        return True
+
+    def _abs_coords(self, x: int, y: int) -> Tuple[int, int]:
+        """Translate local coordinates to absolute display coordinates using origin."""
+        return (x + self.origin[0], y + self.origin[1])
 
     def cord(self, x: int = 1, y: int = 1) -> int:
         """
@@ -63,7 +165,11 @@ class GraphicsHandler:
             inverted: If True, writes black (0). Otherwise, writes white (1).
             margin: Margin offset applied to X and Y coordinates. Defaults to 0.
         """
-        self.pos.dwrite("0" if inverted else "1", start=self.cord(x + margin, y + margin))
+        abs_x, abs_y = self._abs_coords(x + margin, y + margin)
+        if not self._clip_point(abs_x, abs_y):
+            return  # silently clipped
+        addr = self.pos.display_width * abs_y + abs_x
+        self.pos.dwrite("0" if inverted else "1", start=addr)
 
     def clear(self) -> None:
         """
@@ -117,7 +223,6 @@ class GraphicsHandler:
             lines = [x for x in lines for _ in range(scale)]
 
         if not lines:
-            self.cord(cordinates[0] + margin, cordinates[1] + margin)
             return
 
         start_x = cordinates[0] + margin
@@ -126,10 +231,32 @@ class GraphicsHandler:
             if not line_str:
                 continue
             line_y = start_y + i
-            start_idx = self.cord(start_x, line_y)
-            # Check end of row line bounds
-            self.cord(start_x + len(line_str) - 1, line_y)
-            self.pos.dwrite(line_str, start=start_idx)
+            abs_y = line_y + self.origin[1]
+
+            # Skip entire row if above or below window / display
+            if abs_y < 0 or abs_y >= self.pos.display_height:
+                continue
+            if abs_y < self._window_top or abs_y >= self._window_bottom:
+                continue
+
+            # Clip columns
+            abs_start_x = start_x + self.origin[0]
+            abs_end_x = abs_start_x + len(line_str)  # exclusive
+
+            # Determine the drawable horizontal range
+            clip_left = max(abs_start_x, self._window_left, 0)
+            clip_right = min(abs_end_x, self._window_right, self.pos.display_width)
+
+            if clip_left >= clip_right:
+                continue  # entire row clipped
+
+            # Slice the line_str to the drawable portion
+            slice_start = clip_left - abs_start_x
+            slice_end = clip_right - abs_start_x
+            clipped_line = line_str[slice_start:slice_end]
+
+            addr = self.pos.display_width * abs_y + clip_left
+            self.pos.dwrite(clipped_line, start=addr)
 
     def line(self, x0: int, y0: int, x1: int, y1: int, inverted: bool = False, margin: int = 0) -> None:
         """
