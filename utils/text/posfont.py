@@ -224,3 +224,41 @@ class FontHandler:
                         )
                         x += _word_px(word, char_w, letter_sp)
                 y += font_h
+
+    def raw_dprint(
+        self,
+        lines: List[str],
+        cordinates: Optional[List[int]] = None,
+        margin: int = 0,
+        scale: int = 1,
+        transparent: bool = False,
+        inverted: bool = False,
+    ) -> None:
+        """
+        Render pre-formatted lines directly without wrapping.
+
+        Args:
+            lines: List of strings, one per line.
+            cordinates: Starting top-left [x, y] coordinates. Defaults to [0, 0].
+            margin: Offset added to character positions.
+            scale: Pixel scaling factor.
+            transparent: Whether background '0' pixels in glyphs are transparent.
+            inverted: Whether to swap black/white pixels.
+        """
+        if cordinates is None:
+            cordinates = [0, 0]
+
+        props = self.font['properties']
+        font_h = props['height'] * scale
+        line_sp = props['line_spacing'] * scale
+
+        y = cordinates[1]
+        for i, line in enumerate(lines):
+            if i > 0:
+                y += line_sp
+            if line:
+                self.write_words(
+                    line, cordinates=[cordinates[0], y], margin=margin,
+                    scale=scale, transparent=transparent, inverted=inverted,
+                )
+            y += font_h
