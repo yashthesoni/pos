@@ -1,5 +1,3 @@
-from typing import Any
-
 _POSKII_CHARS = [
     # punctuation
     " ",
