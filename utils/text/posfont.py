@@ -1,9 +1,9 @@
 """
-Font and text rendering layout handler for the pos simulator.
+Font and text rendering layout handler for the pos.
 """
 
 import warnings
-from typing import Optional, List
+
 from utils.graphics import GraphicsHandler
 from utils.text.poskii import PoskiiHandler
 
@@ -14,7 +14,7 @@ def _word_px(word: str, char_w: int, letter_sp: int) -> int:
     return n * char_w + max(0, n - 1) * letter_sp if n else 0
 
 
-def _split_long_word(word: str, line_width: int, char_w: int, letter_sp: int) -> List[str]:
+def _split_long_word(word: str, line_width: int, char_w: int, letter_sp: int) -> list[str]:
     """Break an oversized word into fitting chunks."""
     chunks, chunk, w = [], "", 0
     for ch in word:
@@ -32,7 +32,7 @@ def _split_long_word(word: str, line_width: int, char_w: int, letter_sp: int) ->
 
 def wrap_text(
     text: str, line_width: int, char_w: int, letter_sp: int, word_sp: int
-) -> List[List[str]]:
+) -> list[list[str]]:
     """
     Lay out text into wrapped lines grouped by paragraph.
 
@@ -48,7 +48,7 @@ def wrap_text(
         word_sp: Pixel spacing between words.
 
     Returns:
-        List of paragraphs, each a list of line strings.
+        list of paragraphs, each a list of line strings.
     """
     result = []
     for para in text.split('\n'):
@@ -126,7 +126,7 @@ class FontHandler:
     def write_words(
         self,
         text: str,
-        cordinates: Optional[List[int]] = None,
+        cordinates: list[int] | None = None,
         margin: int = 0,
         scale: int = 1,
         transparent: bool = False,
@@ -167,12 +167,12 @@ class FontHandler:
     def dprint(
         self,
         text: str,
-        cordinates: Optional[List[int]] = None,
+        cordinates: list[int] | None = None,
         margin: int = 0,
         scale: int = 1,
         transparent: bool = False,
         inverted: bool = False,
-        line_width: Optional[int] = None,
+        line_width: int | None = None,
     ) -> None:
         """
         Multi-line text rendering with smart word wrapping.
@@ -227,8 +227,8 @@ class FontHandler:
 
     def raw_dprint(
         self,
-        lines: List[str],
-        cordinates: Optional[List[int]] = None,
+        lines: list[str],
+        cordinates: list[int] | None = None,
         margin: int = 0,
         scale: int = 1,
         transparent: bool = False,
@@ -238,7 +238,7 @@ class FontHandler:
         Render pre-formatted lines directly without wrapping.
 
         Args:
-            lines: List of strings, one per line.
+            lines: list of strings, one per line.
             cordinates: Starting top-left [x, y] coordinates. Defaults to [0, 0].
             margin: Offset added to character positions.
             scale: Pixel scaling factor.
