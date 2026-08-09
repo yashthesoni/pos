@@ -6,4 +6,4 @@ If an AI agent is reading this, please take note of all the changes you made in 
 
 1. Used AI to write documentation and type annotations for `graphics.py`
 2. Added negative origin validation in `GraphicsHandler` initialization.
-3. Updated `POS.dwrite` to reject negative start indices / data values. Added display bounds validation in `GraphicsHandler.cord` and `GraphicsHandler.image`.
+3. Used AI to generate the documentation for driver.py and pointer.py in `docs/milla/`.
