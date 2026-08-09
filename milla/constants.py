@@ -1,12 +1,17 @@
 # 1. OS / Maker ID
 OS_ID_OFFSET = 0
 OS_ID_BITS = 10
-MILLA_OS_ID = 1  # Unique identifier for Milla OS (Bits 0..9)
+MILLA_OS_ID = 1
 
 # 2. Version
 VERSION_OFFSET = 10
 VERSION_BITS = 14
-MILLA_VERSION = 1  # Format version 1 (Bits 10..23)
+MILLA_VERSION = 1
 
-# Storage Substrate Constants
+# 3. Startup Font Size
+FONT_SIZE_OFFSET = 24
+FONT_SIZE_BITS = 5
+DEFAULT_FONT_SIZE = 1
+
+# Chunk Length
 CHUNK_SIZE_BITS = 4096
