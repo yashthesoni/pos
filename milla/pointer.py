@@ -1,4 +1,8 @@
 import random
+try:
+    from milla.constants import PTR_BITS
+except ImportError:
+    from constants import PTR_BITS
 
 def encode_address(target_chunk: int | None, total_chunks: int, k: int | None = None) -> list[int]:
     """
@@ -48,8 +52,8 @@ def decode_address(raw_bits: list[int], total_chunks: int) -> tuple[int, bool]:
     if total_chunks <= 0:
         raise ValueError("total_chunks must be strictly positive")
 
-    if len(raw_bits) != 32:
-        raise ValueError(f"raw_bits must be exactly 32 bits long, got {len(raw_bits)}")
+    if len(raw_bits) != PTR_BITS:
+        raise ValueError(f"raw_bits must be {PTR_BITS} bits long, got {len(raw_bits)}")
 
     for b in raw_bits:
         if b not in (0, 1):
