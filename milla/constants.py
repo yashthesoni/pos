@@ -1,17 +1,22 @@
-# 1. OS / Maker ID
+# OS / Maker ID
 OS_ID_OFFSET = 0
 OS_ID_BITS = 10
 MILLA_OS_ID = 1
 
-# 2. Version
+# Version
 VERSION_OFFSET = 10
 VERSION_BITS = 14
 MILLA_VERSION = 1
 
-# 3. Startup Font Size
+# Font Size
 FONT_SIZE_OFFSET = 24
 FONT_SIZE_BITS = 5
 DEFAULT_FONT_SIZE = 1
 
-# Chunk Length
+# Chunk Structure
 CHUNK_SIZE_BITS = 4096
+X_BITS = 16
+Y_BITS = 48
+Z_BITS = 4032
+PAYLOAD_BITS = 4000
+PTR_BITS = 32
