@@ -1,6 +1,9 @@
 import os
 import sys
-import random
+try:
+    from milla.constants import CHUNK_SIZE_BITS
+except ImportError:
+    from constants import CHUNK_SIZE_BITS
 
 class MillaDriver:
     """
@@ -9,7 +12,7 @@ class MillaDriver:
     Deals exclusively in raw bit arrays (list[int] of 0s and 1s).
     """
 
-    CHUNK_SIZE_BITS = 4096
+    CHUNK_SIZE_BITS = CHUNK_SIZE_BITS
 
     def __init__(self, pos_instance):
         self.pos = pos_instance
