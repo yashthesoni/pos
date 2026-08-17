@@ -5,7 +5,7 @@ Main system for single chunk decryption and encryption.'''
 
 import hashlib
 import os
-r
+
 from milla.constants import *
 
 
