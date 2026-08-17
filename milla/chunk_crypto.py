@@ -1,191 +1,109 @@
+'''INDEPENDENT FILE.
+THIS FILE IS NOT LINKED TO POS.
+NO VERIFICATION FOR ACCIDENTAL PHANTOM CHUNKS
+Main system for single chunk decryption and encryption.'''
+
 import hashlib
 import os
-import random
 
-try:
-    from milla.constants import (
-        CHUNK_SIZE_BITS,
-        X_BITS,
-        Y_BITS,
-        Z_BITS,
-        PAYLOAD_BITS,
-        TWEAK_BITS,
-        PTR_BITS,
-    )
-except ImportError:
-    from constants import (
-        CHUNK_SIZE_BITS,
-        X_BITS,
-        Y_BITS,
-        Z_BITS,
-        PAYLOAD_BITS,
-        TWEAK_BITS,
-        PTR_BITS,
-    )
-MOD_48 = 1 << 48
+from milla.constants import *
 
-def bits_to_bytes(bits: list[int]) -> bytes:
-    """Convert a bit list (length multiple of 8) to bytes."""
-    byte_arr = bytearray(len(bits) // 8)
-    for i in range(len(byte_arr)):
-        val = 0
-        for j in range(8):
-            if bits[i * 8 + j]:
-                val |= (1 << (7 - j))
-        byte_arr[i] = val
-    return bytes(byte_arr)
 
-def bytes_to_bits(b_data: bytes) -> list[int]:
-    """Convert bytes to a bit list."""
-    bits = []
-    for b in b_data:
-        for j in range(8):
-            bits.append(1 if (b & (1 << (7 - j))) else 0)
-    return bits
-
-def derive_m(enc_z_bits: list[int], x: int) -> int:
-    """
-    Hash enc_z, then iterate x-1 times to establish Stochastic Proof-of-Work.
-    Returns the first 48 bits as integer m.
-    """
+def _derive_m(enc_z: bytes, x: int) -> int:
     if x < 1 or x > 65535:
         raise ValueError("Iteration count x must be between 1 and 65535")
-        
-    enc_z_bytes = bits_to_bytes(enc_z_bits)
-    
-    # First hash over the full encrypted payload
-    h = hashlib.blake2b(enc_z_bytes).digest()
-    
-    # Stochastic PoW iterations
-    for _ in range(x - 1):
+
+    h = hashlib.blake2b(enc_z).digest()
+
+    for _ in range(x):
         h = hashlib.blake2b(h).digest()
-        
-    # Take first 6 bytes (48 bits) and convert to 48-bit unsigned integer m
-    h_48 = h[:6]
-    m = int.from_bytes(h_48, 'big')
+
+    m = int.from_bytes(h[:6], 'big')
     return m
 
-def derive_keystream(e_val: int, length: int = Z_BITS) -> list[int]:
-    """
-    Expand a 48-bit key integer E into a pseudo-random keystream of specified bit length.
-    """
+def _derive_keystream(e_val: int, length: int = Z_BYTES) -> bytes:
     e_bytes = e_val.to_bytes(6, 'big')
-    keystream_bits = []
+    keystream = bytearray()
     counter = 0
-    while len(keystream_bits) < length:
+    while len(keystream) < length:
         h = hashlib.blake2b(e_bytes + counter.to_bytes(4, 'big')).digest()
-        keystream_bits.extend(bytes_to_bits(h))
+        keystream.extend(h)
         counter += 1
-        
-    return keystream_bits[:length]
 
-def encrypt_chunk(
-    payload_bits: list[int],
-    ptr_bits: list[int],
+    return bytes(keystream[:length])
+
+def _xor_bytes(a: bytes, b: bytes) -> bytes:
+    return bytes(x ^ y for x, y in zip(a, b))
+
+def make_chunk(
+    payload: bytes,
+    ptr: bytes,
     x: int | None = None,
     e_val: int | None = None
-) -> list[int]:
+) -> bytes:
     """
-    Encrypt payload (3999b) and pointer (32b) into a 4096-bit chunk using the Two-Tier architecture:
-    1. Add 1-bit Anti-Phantom Tweak to ensure decrypted payload does not sum to 2016.
-    2. E is a random 48-bit positive integer key.
-    3. Encrypt z = (payload + tweak + ptr) with E to create enc_z.
-    4. Pick uniformly random x (16b). Compute PoW m = derive_m(enc_z, x).
-    5. Compute y = (E - m) mod 2^48.
-    6. Assemble: x (16b) + y (48b) + enc_z (4032b) = 4096 bits.
+    (NO VERIFICATION FOR ACCIDENTAL PHANTOM CHUNKS)
+
+    1. payload is 4000 bit data (NOT 3999)
+    2. ptr is the pointer
+    3. x is the hash count
+    4. e_val key value (symbol: E)
+
+    If you do not give x or e_val, the system will securely generate them.
     """
-    if len(payload_bits) != PAYLOAD_BITS:
-        raise ValueError(f"payload_bits must be exactly {PAYLOAD_BITS} bits, got {len(payload_bits)}")
-    if len(ptr_bits) != PTR_BITS:
-        raise ValueError(f"ptr_bits must be exactly {PTR_BITS} bits, got {len(ptr_bits)}")
-        
-    for b in payload_bits + ptr_bits:
-        if b not in (0, 1):
-            raise ValueError("Input bit arrays must contain exclusively 0s and 1s")
+    if len(payload) != PAYLOAD_BYTES:
+        raise ValueError(f"payload must be {PAYLOAD_BYTES} bytes, got {len(payload)}")
+    if len(ptr) != PTR_BYTES:
+        raise ValueError(f"ptr must be {PTR_BYTES} bytes, got {len(ptr)}")
 
-    # Anti-Phantom Tweak logic
-    S = sum(payload_bits) + sum(ptr_bits)
-    if S == 2016:
-        tweak_bit = 1 # Total = 2017
-    elif S == 2015:
-        tweak_bit = 0 # Total = 2015
-    else:
-        tweak_bit = random.choice([0, 1])
+    z = payload + ptr
 
-    z_bits = payload_bits + [tweak_bit] + ptr_bits
-
-    # Pick random 48-bit key E
+    # pick E
     if e_val is None:
-        e_bytes = os.urandom(6)
-        e_val = int.from_bytes(e_bytes, 'big')
+        e_val = int.from_bytes(os.urandom(6), 'big')
         if e_val == 0:
             e_val = 1
-    elif e_val < 0 or e_val >= MOD_48:
+    elif e_val <= 0 or e_val >= (1 << 48):
         raise ValueError("E must be a positive 48-bit integer")
 
-    # Encrypt z with E
-    keystream = derive_keystream(e_val, Z_BITS)
-    enc_z_bits = [z ^ k for z, k in zip(z_bits, keystream)]
+    # Enc_E(z)
+    keystream = _derive_keystream(e_val, Z_BYTES)
+    enc_z = _xor_bytes(z, keystream)
 
-    # Pick random x (16-bit integer: 1..65535) uniformly
+    # pick x
     if x is None:
-        x = random.randint(1, 65535)
-    elif x < 1 or x > 65535:
-        raise ValueError("x must be between 1 and 65535")
+        x = int.from_bytes(os.urandom(2), 'big') or 1
 
-    # Hash enc_z with Stochastic PoW -> 48-bit integer m
-    m = derive_m(enc_z_bits, x)
+    m = _derive_m(enc_z, x)
 
-    # Compute y = (E - m) mod 2^48
-    y = (e_val - m) % MOD_48
+    y = e_val ^ m    # compute y
 
-    # Convert x (16 bits) and y (48 bits) into bit arrays
-    x_bits = [(x >> i) & 1 for i in range(15, -1, -1)]
-    y_bits = [(y >> i) & 1 for i in range(47, -1, -1)]
+    # return chunk
+    return x.to_bytes(X_BYTES, 'big') + y.to_bytes(Y_BYTES, 'big') + enc_z
 
-    # Assemble 4096-bit chunk
-    chunk_bits = x_bits + y_bits + enc_z_bits
-    return chunk_bits
-
-def decrypt_chunk(chunk_bits: list[int]) -> tuple[list[int], list[int]]:
+def decrypt_chunk(chunk: bytes) -> tuple[bytes, bytes]:
     """
-    Decrypt a 4096-bit chunk using the Two-Tier architecture:
-    1. Unpack x (16b), y (48b), enc_z (4032b).
-    2. Compute PoW hash m from enc_z iterating x times.
-    3. Reconstruct E = (m + y) mod 2^48.
-    4. Decrypt enc_z using E to recover payload (3999b), tweak (1b), and pointer (32b).
+    (NO VERIFICATION FOR PHANTOM CHUNKS)
+
+    Use this function on encrypted chunks.
+    This function will return (payload, ptr)
     """
-    if len(chunk_bits) != CHUNK_SIZE_BITS:
-        raise ValueError(f"chunk_bits must be exactly {CHUNK_SIZE_BITS} bits, got {len(chunk_bits)}")
-    for b in chunk_bits:
-        if b not in (0, 1):
-            raise ValueError("chunk_bits must contain exclusively 0s and 1s")
+    if len(chunk) != CHUNK_SIZE_BYTES:
+        raise ValueError(f"chunk must be {CHUNK_SIZE_BYTES} bytes, got {len(chunk)}")
 
-    # Unpack x (16 bits)
-    x = 0
-    for b in chunk_bits[:16]:
-        x = (x << 1) | b
+    x = int.from_bytes(chunk[:X_BYTES], 'big')
+    y = int.from_bytes(chunk[X_BYTES:X_BYTES+Y_BYTES], 'big')
+    enc_z = chunk[X_BYTES+Y_BYTES:]
 
-    # Unpack y (48 bits)
-    y = 0
-    for b in chunk_bits[16:64]:
-        y = (y << 1) | b
+    m = _derive_m(enc_z, x)
 
-    # Unpack enc_z (4032 bits)
-    enc_z_bits = chunk_bits[64:4096]
-
-    # Compute PoW hash m
-    m = derive_m(enc_z_bits, x)
-
-    # Reconstruct E = (m + y) mod 2^48
-    e_val = (m + y) % MOD_48
+    e_val = m ^ y     # reconstruct E
 
     # Derive keystream from E and decrypt enc_z
-    keystream = derive_keystream(e_val, Z_BITS)
-    z_bits = [ez ^ k for ez, k in zip(enc_z_bits, keystream)]
+    keystream = _derive_keystream(e_val, Z_BYTES)
+    z = _xor_bytes(enc_z, keystream)
 
-    payload_bits = z_bits[:PAYLOAD_BITS]
-    tweak_bit = z_bits[PAYLOAD_BITS]
-    ptr_bits = z_bits[PAYLOAD_BITS + 1:]
+    payload = z[:PAYLOAD_BYTES]
+    ptr = z[PAYLOAD_BYTES:]
 
-    return payload_bits, ptr_bits
+    return payload, ptr

@@ -16,6 +16,7 @@ Both sides mmap the same .pos file.
 import mmap
 import os
 import sys
+from collections.abc import Sequence
 
 # ---------------------------------------------------------------------------
 # Memory layout (all sizes in bits, each bit stored as one byte 0x00/0x01):
@@ -41,7 +42,7 @@ def _pack_int(value: int, n_bits: int) -> bytes:
     return bytes([(value >> (n_bits - 1 - i)) & 1 for i in range(n_bits)])
 
 
-def _unpack_int(mem, offset: int, n_bits: int) -> int:
+def _unpack_int(mem: Sequence[int], offset: int, n_bits: int) -> int:
     """Read `n_bits` bytes of 0/1 starting at `offset`, return integer."""
     v = 0
     for i in range(n_bits):
@@ -62,10 +63,9 @@ class POS:
         """Connect to an existing .pos file."""
         if not os.path.exists(filename):
             raise FileNotFoundError(
-                f"{filename} not found. Start the pos server first, "
-                f"or use POS.create() to make a new one."
+                f"{filename} not found. Start the pos server first, or use POS.create() to make a new one."
             )
-        self._filename = filename
+        self._filename: str = filename
         self._fd = open(filename, "r+b")
         self._mem = mmap.mmap(self._fd.fileno(), 0)  # map entire file
 
@@ -77,9 +77,9 @@ class POS:
             RESERVED_BITS + DISPLAY_SETTINGS_BITS + WIDTH_BITS,
             HEIGHT_BITS,
         )
-        self._display_start = HEADER_BITS
-        self._display_end = HEADER_BITS + self.display_width * self.display_height
-        self._user_start = self._display_end
+        self._display_start: int = HEADER_BITS
+        self._display_end: int = HEADER_BITS + self.display_width * self.display_height
+        self._user_start: int = self._display_end
 
     @classmethod
     def create(
@@ -94,8 +94,7 @@ class POS:
         min_required = HEADER_BITS + display_pixels
         if total_bits < min_required:
             raise ValueError(
-                f"Need >= {min_required} bits for {display_width}x{display_height} "
-                f"display, got {total_bits}"
+                f"Need >= {min_required} bits for {display_width}x{display_height} display, got {total_bits}"
             )
         if not 1 <= display_width < (1 << WIDTH_BITS):
             raise ValueError(f"Width must be 1..{(1 << WIDTH_BITS) - 1}")
@@ -123,7 +122,7 @@ class POS:
 
     # --- public API ---------------------------------------------------------
 
-    def _read(self, start: int, length: int, *, smart: bool = True) -> list[int]:
+    def read(self, start: int, length: int, *, smart: bool = True) -> list[int]:
         """
         Read `length` bits starting from `start`.
 
@@ -136,7 +135,7 @@ class POS:
             raise IndexError("read overflows memory")
         return list(self._mem[start : start + length])
 
-    def _write(self, data, start: int, *, smart: bool = True) -> None:
+    def write(self, data, start: int, *, smart: bool = True) -> None:
         """
         Write `data` (list of 0/1/2, or string like "1021") starting at `start`.
         A value of 2 is transparent — that bit is left unchanged.
@@ -335,9 +334,7 @@ if __name__ == "__main__":
     if os.path.exists(fname):
         pos = POS(fname)
         print(
-            f"Loaded {fname} — {pos.total_bits} bits, "
-            f"display {pos.display_width}×{pos.display_height}, "
-            f"user memory {pos.user_memory_size} bits"
+            f"Loaded {fname} — {pos.total_bits} bits, display {pos.display_width}×{pos.display_height}, user memory {pos.user_memory_size} bits"
         )
     else:
         print(f"Creating new pos: {fname}")
@@ -346,9 +343,7 @@ if __name__ == "__main__":
         h = int(input("  Display height (pixels) : "))
         pos = POS.create(fname, total, w, h)
         print(
-            f"Created — {pos.total_bits} bits, "
-            f"display {pos.display_width}×{pos.display_height}, "
-            f"user memory {pos.user_memory_size} bits"
+            f"Created — {pos.total_bits} bits, display {pos.display_width}×{pos.display_height}, user memory {pos.user_memory_size} bits"
         )
 
     print("Display running. Close window to stop.")

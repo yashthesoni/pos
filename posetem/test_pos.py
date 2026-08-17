@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from posetem.pos import POS, HEADER_BITS
+from posetem.pos import HEADER_BITS, POS
 
 
 def test():
@@ -19,12 +19,12 @@ def test():
         pos = POS.create(fname, total_bits=2000, display_width=W, display_height=H)
 
         # Smart write/read in user memory.
-        pos._write([1, 1, 0, 1], start=0)
-        assert pos._read(0, 4) == [1, 1, 0, 1], "user memory read/write failed"
+        pos.write([1, 1, 0, 1], start=0)
+        assert pos.read(0, 4) == [1, 1, 0, 1], "user memory read/write failed"
 
         # Raw addressing: first user bit is at HEADER_BITS + W*H.
         raw_start = HEADER_BITS + W * H
-        assert pos._read(raw_start, 4, smart=False) == [1, 1, 0, 1], "raw read failed"
+        assert pos.read(raw_start, 4, smart=False) == [1, 1, 0, 1], "raw read failed"
 
         # dwrite / dread.
         pos.dwrite([1, 0, 1, 0])
@@ -47,7 +47,7 @@ def test():
         assert pos2.display_width == W, "reloaded width mismatch"
         assert pos2.display_height == H, "reloaded height mismatch"
         assert pos2.total_bits == 2000, "reloaded total_bits mismatch"
-        assert pos2._read(0, 4) == [1, 1, 0, 1], "reloaded user data mismatch"
+        assert pos2.read(0, 4) == [1, 1, 0, 1], "reloaded user data mismatch"
         assert pos2.dread(0, 4) == [1, 1, 1, 1], "reloaded display data mismatch"
         pos2.close()
 

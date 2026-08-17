@@ -9,6 +9,7 @@ Includes a viewport window system.
 
 from contextlib import contextmanager
 from typing import List, Optional, Tuple
+
 from posetem.pos import POS
 
 
