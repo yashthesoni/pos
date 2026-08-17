@@ -17,6 +17,7 @@ import mmap
 import os
 import sys
 from collections.abc import Sequence
+from typing import IO, cast, final
 
 # ---------------------------------------------------------------------------
 # Memory layout (all sizes in bits, each bit stored as one byte 0x00/0x01):
@@ -50,6 +51,7 @@ def _unpack_int(mem: Sequence[int], offset: int, n_bits: int) -> int:
     return v
 
 
+@final
 class POS:
     """
     Connection to a pos instance via memory-mapped .pos file.
@@ -66,14 +68,17 @@ class POS:
                 f"{filename} not found. Start the pos server first, or use POS.create() to make a new one."
             )
         self._filename: str = filename
-        self._fd = open(filename, "r+b")
-        self._mem = mmap.mmap(self._fd.fileno(), 0)  # map entire file
+        with open(filename, "r+b") as fd:
+            self._fd: IO[bytes] = os.fdopen(os.dup(fd.fileno()), "r+b")
+        self._mem: mmap.mmap = mmap.mmap(self._fd.fileno(), 0)  # map entire file
 
-        self.display_width = _unpack_int(
-            self._mem, RESERVED_BITS + DISPLAY_SETTINGS_BITS, WIDTH_BITS
+        self.display_width: int = _unpack_int(
+            cast(Sequence[int], cast(object, self._mem)),
+            RESERVED_BITS + DISPLAY_SETTINGS_BITS,
+            WIDTH_BITS,
         )
-        self.display_height = _unpack_int(
-            self._mem,
+        self.display_height: int = _unpack_int(
+            cast(Sequence[int], cast(object, self._mem)),
             RESERVED_BITS + DISPLAY_SETTINGS_BITS + WIDTH_BITS,
             HEIGHT_BITS,
         )
@@ -109,16 +114,16 @@ class POS:
         height_offset = width_offset + WIDTH_BITS
         mem[height_offset:HEADER_BITS] = _pack_int(display_height, HEIGHT_BITS)
         with open(filename, "wb") as f:
-            f.write(mem)
+            _ = f.write(mem)
 
         return cls(filename)
 
     @staticmethod
-    def _to_bits(data) -> list[int]:
+    def _to_bits(data: Sequence[int] | str) -> list[int]:
         """Normalize input: '101' -> [1,0,1], passthrough lists."""
         if isinstance(data, str):
             return [int(c) for c in data]
-        return data
+        return list(data)
 
     # --- public API ---------------------------------------------------------
 
@@ -135,7 +140,7 @@ class POS:
             raise IndexError("read overflows memory")
         return list(self._mem[start : start + length])
 
-    def write(self, data, start: int, *, smart: bool = True) -> None:
+    def write(self, data: Sequence[int] | str, start: int, *, smart: bool = True) -> None:
         """
         Write `data` (list of 0/1/2, or string like "1021") starting at `start`.
         A value of 2 is transparent — that bit is left unchanged.
@@ -153,7 +158,7 @@ class POS:
                 continue
             self._mem[start + i] = b & 1
 
-    def dwrite(self, data, start: int = 0, *, smart: bool = True) -> None:
+    def dwrite(self, data: Sequence[int] | str, start: int = 0, *, smart: bool = True) -> None:
         """
         Write `data` (list of 0/1/2, or string like "1021") to the display region.
         Overflow is silently clipped. A value of 2 is transparent — that pixel
@@ -164,7 +169,7 @@ class POS:
         if start < 0:
             raise ValueError("start index cannot be negative")
         data = self._to_bits(data)
-        if any(isinstance(b, int) and b < 0 for b in data):
+        if any(b < 0 for b in data if b != 2):
             raise ValueError("data cannot contain negative numbers")
         if smart:
             start += self._display_start
@@ -207,10 +212,12 @@ class POS:
         self._mem.close()
         self._fd.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "POS":
         return self
 
-    def __exit__(self, *a):
+    def __exit__(
+        self, exc_type: object, exc: object, tb: object
+    ) -> None:
         self.close()
 
     # --- display (server-side only) -----------------------------------------
@@ -222,7 +229,7 @@ class POS:
 
         root = tk.Tk()
         root.title(f"pos — {os.path.basename(self._filename)}")
-        root.configure(bg="gray")
+        _ = root.configure(bg="gray")
 
         w, h = self.display_width, self.display_height
 
@@ -244,7 +251,7 @@ class POS:
 
         # Auto-zoom fits within 400x400 limit initially
         auto_scale = max(0.5, min(400 / max(w, 1), 400 / max(h, 1)))
-        current_scale = min(SCALES, key=lambda s: abs(s - auto_scale))
+        current_scale: float = min(SCALES, key=lambda s: abs(s - auto_scale))
 
         label = tk.Label(root, borderwidth=0, highlightthickness=0, bg="black")
         label.pack(padx=10, pady=10)
@@ -260,23 +267,23 @@ class POS:
                 last_snap[0] = snap
                 pixels = snap.translate(_DISPLAY_LUT)
                 with open(tmpfile, "wb") as f:
-                    f.write(pgm_header)
-                    f.write(pixels)
+                    _ = f.write(pgm_header)
+                    _ = f.write(pixels)
                 img = tk.PhotoImage(file=tmpfile)
                 z, s = SCALE_MAP.get(current_scale, (1, 1))
                 if z > 1:
                     img = img.zoom(z)
                 if s > 1:
                     img = img.subsample(s)
-                label.configure(image=img)
+                _ = label.configure(image=img)
                 photo_ref[0] = img
-            root.after(33, update)  # ~30 fps
+            _ = root.after(33, update)  # ~30 fps
 
         def trigger_update():
             last_snap[0] = None
             update()
 
-        def set_scale(new_scale):
+        def set_scale(new_scale: float) -> None:
             nonlocal current_scale
             if new_scale in SCALE_MAP:
                 current_scale = new_scale
@@ -292,7 +299,7 @@ class POS:
             if idx > 0:
                 set_scale(SCALES[idx - 1])
 
-        def set_max_size():
+        def set_max_size() -> None:
             max_w, max_h = root.maxsize()
             fits = [s for s in SCALES if w * s <= max_w and h * s <= max_h]
             set_scale(max(fits) if fits else 0.5)
@@ -303,8 +310,8 @@ class POS:
         view_menu.add_command(label="Zoom In", command=zoom_in)
         view_menu.add_command(label="Zoom Out", command=zoom_out)
         view_menu.add_command(label="Max Size", command=set_max_size)
-        menubar.add_cascade(label="View", menu=view_menu)
-        root.config(menu=menubar)
+        _ = menubar.add_cascade(label="View", menu=view_menu)
+        _ = root.config(menu=menubar)
 
         def on_close():
             root.destroy()
@@ -313,8 +320,8 @@ class POS:
             except OSError:
                 pass
 
-        root.protocol("WM_DELETE_WINDOW", on_close)
-        root.after(1, update)
+        _ = root.protocol("WM_DELETE_WINDOW", on_close)
+        _ = root.after(1, update)
         root.mainloop()
 
 
