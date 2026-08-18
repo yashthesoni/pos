@@ -1,3 +1,11 @@
+"""
+Main system for pointer creation and decoding.
+
+DEALS EXCLUSIVELY IN BYTES.
+"""
+
+# CLEAN LATER, bad code, long additions.
+
 import os
 
 from milla.constants import PTR_BYTES
@@ -13,12 +21,12 @@ def encode_address(target_chunk: int | None, total_chunks: int, k: int | None = 
     becomes purely random jitter and MSB is 0.
     """
     if total_chunks <= 0:
-        raise ValueError("total_chunks must be strictly positive")
+        raise ValueError("total_chunks cannot be negative")
 
     is_chained = bool(target_chunk)
 
     if not is_chained:
-        raw_addr = int.from_bytes(os.urandom(4), 'big') & ((1 << 31) - 1)
+        raw_addr = int.from_bytes(os.urandom(4), 'big') & ((1 << 31) - 1)   # dirty shit
     else:
         if target_chunk < 1 or target_chunk > total_chunks:
             raise ValueError(f"target_chunk {target_chunk} is out of bounds (1 to {total_chunks})")
@@ -41,14 +49,14 @@ def encode_address(target_chunk: int | None, total_chunks: int, k: int | None = 
     return raw_addr.to_bytes(PTR_BYTES, 'big')
 
 
-def decode_address(raw_bytes: bytes, total_chunks: int) -> tuple[int, bool]:
+def decode_address(raw_bytes: bytes, total_chunks: int) -> int:
     """
     Recover the target chunk index and chain flag from a 4-byte address.
-    Returns (target_chunk, is_chained).
-    If not chained, target_chunk is returned as 0 (no location) and the address is considered garbage.
+    Returns target_chunk, if pointer is chained.
+    If not chained, target_chunk is returned as 0 (no location) and the address is considered pure garbage.
     """
     if total_chunks <= 0:
-        raise ValueError("total_chunks must be strictly positive")
+        raise ValueError("total_chunks cannot be negative")
 
     if len(raw_bytes) != PTR_BYTES:
         raise ValueError(f"raw_bytes must be {PTR_BYTES} bytes long, got {len(raw_bytes)}")
@@ -57,10 +65,10 @@ def decode_address(raw_bytes: bytes, total_chunks: int) -> tuple[int, bool]:
     is_chained = bool(val & (1 << 31))
 
     if not is_chained:
-        return 0, False
+        return 0
 
     raw_addr = val & ((1 << 31) - 1)
     res = raw_addr % total_chunks
     target_chunk = total_chunks if res == 0 else res
 
-    return target_chunk, True
+    return target_chunk
