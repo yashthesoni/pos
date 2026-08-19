@@ -66,15 +66,12 @@ class MillaDriver:
 
     def check_phantom(self, chunk_idx: int) -> bool:
         """
-        Check if the chunk at chunk_idx is a Phantom Node.
-        A chunk is a Phantom Node if the Hamming Weight (sum of bits) of its decrypted payload (z) exactly equals 2016.
+        A chunk is a Phantom Node if the Hamming Weight (sum of bits) of its decrypted data (500 bytes) exactly equals 2000.
         """
         from milla.chunk_crypto import decrypt_chunk
-        
+    
         chunk = self.read_chunk(chunk_idx)
         payload = decrypt_chunk(chunk)[0]
-        z = payload
-        
-        hamming_weight = sum(b.bit_count() for b in z)
-        return hamming_weight == 2016
+        hamming_weight = sum(b.bit_count() for b in payload)
+        return hamming_weight == 2000
 
