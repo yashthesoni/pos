@@ -63,3 +63,18 @@ class MillaDriver:
         Overwrites a specific chunk with random chaff."""
         chaff = os.urandom(self.CHUNK_SIZE_BYTES)
         self.write_chunk(chunk_idx, chaff)
+
+    def check_phantom(self, chunk_idx: int) -> bool:
+        """
+        Check if the chunk at chunk_idx is a Phantom Node.
+        A chunk is a Phantom Node if the Hamming Weight (sum of bits) of its decrypted payload (z) exactly equals 2016.
+        """
+        from milla.chunk_crypto import decrypt_chunk
+        
+        chunk = self.read_chunk(chunk_idx)
+        payload = decrypt_chunk(chunk)[0]
+        z = payload
+        
+        hamming_weight = sum(b.bit_count() for b in z)
+        return hamming_weight == 2016
+
