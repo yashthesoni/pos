@@ -107,3 +107,26 @@ def decrypt_chunk(chunk: bytes) -> tuple[bytes, bytes]:
     ptr = z[PAYLOAD_BYTES:]
 
     return payload, ptr
+
+def make_phantom(ptr: bytes | None = None) -> bytes:
+    """
+    Creates a Phantom Node chunk by generating a random payload with exactly 2000 set bits.
+    """
+    import secrets
+    
+    if ptr is None:
+        ptr = os.urandom(PTR_BYTES)
+        
+    bits = [0] * (PAYLOAD_BYTES * 8)
+    for idx in secrets.SystemRandom().sample(range(PAYLOAD_BYTES * 8), 2000):
+        bits[idx] = 1
+        
+    payload_bytearray = bytearray(PAYLOAD_BYTES)
+    for i in range(PAYLOAD_BYTES):
+        val = 0
+        for j in range(8):
+            if bits[i * 8 + j]:
+                val |= (1 << (7 - j))
+        payload_bytearray[i] = val
+        
+    return make_chunk(bytes(payload_bytearray), ptr)
