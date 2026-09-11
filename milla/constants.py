@@ -13,6 +13,10 @@ FONT_SIZE_OFFSET = 24
 FONT_SIZE_BITS = 5
 DEFAULT_FONT_SIZE = 1
 
+# Status
+ENC_STATUS_BITS = 2 # to store the encrypted status, 00 for not encrypted
+ENC_STATUS_DEFAULT = 0
+
 # Chunk Structure
 CHUNK_SIZE_BYTES = 512
 X_BYTES = 2
