@@ -19,6 +19,8 @@ def encode_address(target_chunk: int | None, total_chunks: int, k: int | None = 
 
     If target_chunk is 0 or None (meaning no location / terminal), the 31-bit address portion
     becomes purely random jitter and MSB is 0.
+
+    k is an optional value to set the modulo jitter
     """
     if total_chunks <= 0:
         raise ValueError("total_chunks cannot be negative")
