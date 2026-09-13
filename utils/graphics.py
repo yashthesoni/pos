@@ -8,7 +8,6 @@ Includes a viewport window system.
 """
 
 from contextlib import contextmanager
-from typing import List, Optional, Tuple
 
 from posetem.pos import POS
 
@@ -21,7 +20,7 @@ class GraphicsHandler:
     Drawing operations that fall outside the window are silently clipped.
     """
 
-    def __init__(self, pos: POS, origin: Optional[List[int]] = None, margin: int = 0) -> None:
+    def __init__(self, pos: POS, origin: list[int] | None = None, margin: int = 0) -> None:
         """
         Initialize the GraphicsHandler with a POS instance and an optional origin offset.
 
@@ -33,7 +32,7 @@ class GraphicsHandler:
                 Shrinks the usable window inward. Defaults to 0.
         """
         self.pos: POS = pos
-        self.origin: List[int] = origin if origin is not None else [0, 0]
+        self.origin: list[int] = origin if origin is not None else [0, 0]
         if any(coord < 0 for coord in self.origin):
             raise ValueError("Origin coordinates cannot be negative")
         if self.pos is not None:
@@ -93,7 +92,7 @@ class GraphicsHandler:
         self.set_window(left, top, right, bottom)
 
     @property
-    def window(self) -> Tuple[int, int, int, int]:
+    def window(self) -> tuple[int, int, int, int]:
         """
         The current clipping window as (left, top, right, bottom) in absolute display coordinates.
         """
@@ -110,7 +109,7 @@ class GraphicsHandler:
         return self._window_bottom - self._window_top
 
     @property
-    def window_size(self) -> Tuple[int, int]:
+    def window_size(self) -> tuple[int, int]:
         """Usable (width, height) of the current window."""
         return (self.window_width, self.window_height)
 
@@ -132,7 +131,7 @@ class GraphicsHandler:
             return False
         return True
 
-    def _abs_coords(self, x: int, y: int) -> Tuple[int, int]:
+    def _abs_coords(self, x: int, y: int) -> tuple[int, int]:
         """Translate local coordinates to absolute display coordinates using origin."""
         return (x + self.origin[0], y + self.origin[1])
 
@@ -200,7 +199,7 @@ class GraphicsHandler:
         self,
         array: str,
         line_length: int,
-        cordinates: Optional[List[int]] = None,
+        cordinates: list[int] | None = None,
         margin: int = 0,
         scale: int = 1,
         transparent: bool = False,
@@ -232,7 +231,7 @@ class GraphicsHandler:
         if transparent:
             array = array.replace("0", "2")
 
-        lines: List[str] = [
+        lines: list[str] = [
             array[i : i + line_length] for i in range(0, len(array), line_length)
         ]
 
