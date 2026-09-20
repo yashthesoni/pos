@@ -1,5 +1,5 @@
 '''
-THIS FILE IS LINKED TO POS.
+THIS FILE IS LINKED TO POS. (not for now...)
 
 Main system for startup procedures.
 '''
