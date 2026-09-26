@@ -68,10 +68,8 @@ class MillaDriver:
         """
         A chunk is a Phantom Node if the Hamming Weight (sum of bits) of its decrypted data (500 bytes) exactly equals 2000.
         """
-        from milla.chunk_crypto import decrypt_chunk
-    
+        from milla.chunk_crypto import verify_phantom
+
         chunk = self.read_chunk(chunk_idx)
-        payload = decrypt_chunk(chunk)[0]
-        hamming_weight = sum(b.bit_count() for b in payload)
-        return hamming_weight == 2000
+        return verify_phantom(chunk)
 

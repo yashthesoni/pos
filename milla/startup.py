@@ -2,6 +2,8 @@
 THIS FILE IS LINKED TO POS. (not for now...)
 
 Main system for startup procedures.
+
+Monolith encryption is not yet implemented.
 '''
 
 import hashlib
