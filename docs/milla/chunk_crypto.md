@@ -2,7 +2,7 @@
 
 This document outlines the cryptographic logic and chunk structure used within the Milla storage environment, as implemented in `milla/chunk_crypto.py`. 
 
-*(Note: The system explicitly skips verification for accidental phantom chunks at the cryptography layer).*
+*(Note: Accidental phantom chunks are verified at the cryptography layer via `verify_phantom()`).*
 
 ---
 
@@ -27,18 +27,19 @@ The internal structure of the 504-byte unencrypted $z$ block is mapped as follow
 
 When a payload and pointer are to be written to a chunk, Milla secures them using the following process:
 
-1. **Secret Key Generation**: Generate a random 48-bit secret integer $E$. (If $E = 0$, it is bumped to $1$).
-2. **Data Concatenation**: Concatenate the payload (500 bytes) and the pointer (4 bytes) to form $z$ (504 bytes).
-3. **Keystream Derivation**: 
+1. **Phantom Verification**: If `allow_phantom=False` (default), verifies that the payload does not accidentally have a Hamming weight of 2000 set bits (`verify_phantom(payload)`).
+2. **Secret Key Generation**: Generate a random 48-bit secret integer $E$. (If $E = 0$, it is bumped to $1$).
+3. **Data Concatenation**: Concatenate the payload (500 bytes) and the pointer (4 bytes) to form $z$ (504 bytes).
+4. **Keystream Derivation**: 
    * A PRF keystream of 504 bytes is derived from $E$ using BLAKE2b.
-4. **Encryption**: 
+5. **Encryption**: 
    * XOR the plaintext $z$ with the keystream to produce $z_{enc}$.
-5. **Stochastic Proof-of-Work Calculation**:
+6. **Stochastic Proof-of-Work Calculation**:
    * A random 16-bit integer $x$ is chosen.
    * $m$ is derived by recursively hashing $z_{enc}$ exactly $x$ times via BLAKE2b, taking the first 48 bits of the final digest.
-6. **Key Disguise**: 
+7. **Key Disguise**: 
    * Compute $y = E \oplus m$. This effectively locks $E$ behind the work value $m$.
-7. **Finalization**: 
+8. **Finalization**: 
    * Assemble the final chunk in the order: $x \mathbin{\Vert} y \mathbin{\Vert} z_{enc}$.
 
 ---
@@ -56,3 +57,12 @@ To extract data from an encrypted chunk on disk:
    * Rebuild the keystream from $E$ and XOR it against $z_{enc}$ to recover the plaintext $z$.
 5. **Data Unpacking**: 
    * Split $z$ into the 500-byte payload and the 4-byte pointer.
+
+---
+
+## 4. Phantom Node Verification
+
+* **`verify_phantom(data: bytes) -> bool`**: Verifies whether a 500-byte decrypted payload or a 512-byte encrypted chunk is a Phantom Node by evaluating if the Hamming weight (number of set bits) of the payload exactly equals 2000 ($\sum \text{bit\_count} = 2000$).
+* **`is_phantom(data: bytes) -> bool`**: Alias for `verify_phantom(data)`.
+* **`make_phantom(ptr: bytes | None = None) -> bytes`**: Generates a valid Phantom Node chunk with exactly 2000 set bits and an encrypted next pointer.
+
